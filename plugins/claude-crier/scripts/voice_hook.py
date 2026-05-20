@@ -10,8 +10,9 @@ ear.
   - Linux: espeak-ng / spd-say if present, or set CLAUDE_VOICE_CMD to any command
     that reads text on stdin (e.g. a Piper pipeline) for natural voices.
 
-Per-session control is via slash commands, which call this script:
-  /voice-on /voice-off /voice-name <name> /voice-persona [#|name] /voice-doctor
+Per-session control is via slash commands (named /voice-* or /crier:* depending
+on how it is installed), which call this script with modes:
+  on | off | name <name> | persona [#|name] | doctor
 
 State is per session id under ~/.claude/voice/state/<id>.json and OVERRIDES the
 launch-time env defaults (so `claude-voice` still works, but you can also flip a
@@ -374,20 +375,20 @@ def cmd_persona(args):
     pool = premium_pool()
     if not arg:
         if platform_kind() != "macos":
-            print("Voice list is macOS-only here. Run /voice-doctor for this platform.")
+            print("Voice personas are macOS-only. Run the doctor command for this platform.")
             return
         if not pool:
-            print("No Enhanced/Premium voices installed. Run /voice-doctor for setup.")
+            print("No Enhanced/Premium voices installed. Run the doctor command for setup.")
             return
         print("Available voice personas:")
         cur = resolve_voice(sid)
         for i, n in enumerate(pool, 1):
             print("  %2d. %s%s" % (i, n, "  <- current" if n == cur else ""))
-        print("Choose with: /voice-persona <number>   or   /voice-persona <name>")
+        print("Choose one by number or name, e.g. 3 or Ava.")
         return
     chosen = match_persona(arg, pool)
     if not chosen:
-        print("No voice matches '%s'. Run /voice-persona to see the list." % arg)
+        print("No voice matches '%s'. Run the persona command with no argument to see the list." % arg)
         return
     write_state(sid, voice=chosen)
     print("Voice persona set to: %s" % chosen)
