@@ -7,8 +7,8 @@ Crier is a local, zero-API voice-notification plugin for [Claude Code](https://c
 It is **not** a read-the-whole-reply-aloud tool and **not** a two-way voice chat — it's an *awareness* layer for people juggling multiple agents.
 
 ```
-"Flock backend — finished wiring the Stop hook; next, run the test suite."
-"Signals — needs you: permission to run a database migration."
+"api-server — finished adding the search endpoint; next, run the tests."
+"web-app — needs you: it has a question before continuing."
 ```
 
 ## Why
@@ -40,7 +40,7 @@ Voice is **off by default** and opt-in **per session** — turn it on only for t
 |---|---|
 | `/crier:on` | Turn voice on for **this** session |
 | `/crier:off` | Turn it off for this session (stops audio *and* the summary line) |
-| `/crier:name <name>` | Set the spoken name for this session, e.g. `/crier:name Flock backend` |
+| `/crier:name <name>` | Set the spoken name for this session, e.g. `/crier:name api-server` |
 | `/crier:persona` | List available voices; the current one is marked |
 | `/crier:persona <#\|name>` | Pick a voice, e.g. `/crier:persona 3` or `/crier:persona Ava` (speaks a sample) |
 | `/crier:doctor` | Diagnose your setup (engine, voices, session, on/off state) |
