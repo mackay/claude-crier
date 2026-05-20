@@ -73,7 +73,7 @@ Crier registers three [Claude Code hooks](https://code.claude.com/docs/en/hooks)
 
 - **`SessionStart`** — when voice is on, injects an instruction asking Claude to end each turn with a hidden one-line summary marker (`🔊 VOICE: …`).
 - **`Stop`** — extracts that summary line from the transcript and speaks it, prefixed with the session's name.
-- **`Notification`** — speaks an alert when the session needs your input or permission. Repeated idle notifications are de-duplicated (at most once a minute) so it won't nag while you're away.
+- **`Notification`** — speaks an alert when the session needs your input or permission. Repeated idle notifications are de-duplicated (at most once a minute), and a notification is dropped rather than queued if something else is mid-sentence — so it never plays *after* you've already answered the prompt.
 - **Error flagging** — if Claude marks a turn as failed or blocked (it's asked to begin the summary with "Problem:"), Crier speaks it as a *"heads up"* alert so problems stand out by ear. This is self-reported, so it's reliable but not guaranteed.
 
 Speech is serialized with a lock so two sessions finishing at once don't talk over each other. Per-session state (on/off, name, voice, rate, focus) lives in `~/.claude/voice/state/<session-id>.json`.

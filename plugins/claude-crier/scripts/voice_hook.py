@@ -252,11 +252,20 @@ def match_persona(arg, pool):
 
 # --------------------------------- speaking ---------------------------------
 
-def _locked_speak(text, voice, rate):
+def _locked_speak(text, voice, rate, nowait=False):
     os.makedirs(VOICE_DIR, exist_ok=True)
     fh = open(LOCK, "w")
+    locked = False
     try:
-        fcntl.flock(fh, fcntl.LOCK_EX)  # serialize so parallel sessions don't overlap
+        try:
+            # nowait (notifications): if something else is mid-sentence, DROP this
+            # rather than queue behind it — a "needs you" alert that plays after
+            # you've already answered the prompt is just noise. Summaries queue
+            # normally (blocking) so parallel sessions don't talk over each other.
+            fcntl.flock(fh, fcntl.LOCK_EX | (fcntl.LOCK_NB if nowait else 0))
+            locked = True
+        except OSError:
+            return
         # Drop an identical line spoken in the last few seconds — guards against a
         # hook that fired twice (e.g. the plugin enabled twice). The lock makes this
         # check race-free: the prior utterance has finished and recorded itself.
@@ -274,16 +283,18 @@ def _locked_speak(text, voice, rate):
         except Exception:
             pass
     finally:
-        fcntl.flock(fh, fcntl.LOCK_UN)
+        if locked:
+            fcntl.flock(fh, fcntl.LOCK_UN)
         fh.close()
 
 
-def speak_async(text, voice=None, rate=None):
+def speak_async(text, voice=None, rate=None, nowait=False):
     """Fire-and-forget: detach a child that speaks under the lock, so the hook
-    returns instantly."""
+    returns instantly. nowait=True (notifications) drops the line if the speech
+    channel is busy instead of queueing behind it."""
     if not text:
         return
-    arg = json.dumps({"text": text, "voice": voice, "rate": rate})
+    arg = json.dumps({"text": text, "voice": voice, "rate": rate, "nowait": nowait})
     subprocess.Popen([sys.executable, SELF, "_speak", arg],
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                      stderr=subprocess.DEVNULL, start_new_session=True)
@@ -439,7 +450,8 @@ def notification():
     if st.get("_notif_msg") == msg and (now - float(st.get("_notif_ts") or 0)) < 60:
         return
     write_state(sid, _notif_msg=msg, _notif_ts=now)
-    speak_async(f"{lab} needs you. {msg}", resolve_voice(sid), resolve_rate(sid))
+    speak_async(f"{lab} needs you. {msg}", resolve_voice(sid), resolve_rate(sid),
+                nowait=True)
 
 
 # ------------------------- interactive (slash commands) -------------------------
@@ -594,7 +606,8 @@ def main():
             d = json.loads(rest[0]) if rest else {}
         except Exception:
             d = {}
-        _locked_speak(d.get("text", ""), d.get("voice"), d.get("rate"))
+        _locked_speak(d.get("text", ""), d.get("voice"), d.get("rate"),
+                      nowait=bool(d.get("nowait")))
     elif mode == "on":
         cmd_on()
     elif mode == "off":

@@ -1,7 +1,7 @@
 {
   "name": "crier",
   "description": "Hear a short spoken summary when each Claude Code session finishes or needs you — named per session.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "author": {
     "name": "Doug Mackay"
   },
