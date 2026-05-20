@@ -26,7 +26,7 @@ Windows and Linux are supported on a best-effort, experimental basis — see [Pl
 ## Install
 
 ```text
-/plugin marketplace add <owner>/claude-crier
+/plugin marketplace add mackay/claude-crier
 /plugin install claude-crier@claude-crier
 ```
 
