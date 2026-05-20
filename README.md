@@ -27,7 +27,7 @@ Windows and Linux are supported on a best-effort, experimental basis — see [Pl
 
 ```text
 /plugin marketplace add mackay/claude-crier
-/plugin install claude-crier@claude-crier
+/plugin install crier@claude-crier
 ```
 
 That's it — the hooks and slash commands activate immediately. No editing of your `settings.json`, no shell changes. (Crier ships only local command hooks; as with any plugin, install from sources you trust.)
@@ -38,14 +38,14 @@ Voice is **off by default** and opt-in **per session** — turn it on only for t
 
 | Command | What it does |
 |---|---|
-| `/crier-on` | Turn voice on for **this** session |
-| `/crier-off` | Turn it off for this session (stops audio *and* the summary line) |
-| `/crier-name <name>` | Set the spoken name for this session, e.g. `/crier-name Flock backend` |
-| `/crier-persona` | List available voices; the current one is marked |
-| `/crier-persona <#\|name>` | Pick a voice, e.g. `/crier-persona 3` or `/crier-persona Ava` (speaks a sample) |
-| `/crier-doctor` | Diagnose your setup (engine, voices, session, on/off state) |
+| `/crier:on` | Turn voice on for **this** session |
+| `/crier:off` | Turn it off for this session (stops audio *and* the summary line) |
+| `/crier:name <name>` | Set the spoken name for this session, e.g. `/crier:name Flock backend` |
+| `/crier:persona` | List available voices; the current one is marked |
+| `/crier:persona <#\|name>` | Pick a voice, e.g. `/crier:persona 3` or `/crier:persona Ava` (speaks a sample) |
+| `/crier:doctor` | Diagnose your setup (engine, voices, session, on/off state) |
 
-> Installed as a plugin, these may appear namespaced (e.g. `/claude-crier:crier-on`) depending on your Claude Code version.
+> These live under the plugin's `crier:` namespace — type `/crier` in the prompt to see them all and pick one.
 
 If you don't set a name, it defaults to the session's folder name. If you don't pick a voice, Crier assigns a **random Enhanced/Premium voice per session** — stable within a session, different across parallel ones, so they're easy to tell apart by ear.
 
@@ -79,7 +79,7 @@ On macOS, download better voices in **System Settings → Accessibility → Spok
 | Fiona (Enhanced) | Scottish |
 | Moira (Enhanced) | Irish |
 
-Then `/crier-persona` to browse and pick. Note: Siri voices are **not** available to `say` — only the Enhanced/Premium variants are.
+Then `/crier:persona` to browse and pick. Note: Siri voices are **not** available to `say` — only the Enhanced/Premium variants are.
 
 Tip for parallel sessions: give each a different accent so you can identify them instantly.
 
@@ -97,7 +97,7 @@ Tip for parallel sessions: give each a different accent so you can identify them
 export CLAUDE_VOICE_CMD='piper --model en_US-amy-medium.onnx --output-raw | aplay -r 22050 -f S16_LE -t raw -'
 ```
 
-Run `/crier-doctor` on any platform for tailored setup guidance.
+Run `/crier:doctor` on any platform for tailored setup guidance.
 
 ## Configuration
 
@@ -113,10 +113,10 @@ All optional; per-session slash commands override these launch-time defaults.
 
 ## Troubleshooting
 
-Run **`/crier-doctor`** — it reports your platform, whether a TTS engine is found, installed voices, the detected session, and whether voice is on or off, then speaks a test line.
+Run **`/crier:doctor`** — it reports your platform, whether a TTS engine is found, installed voices, the detected session, and whether voice is on or off, then speaks a test line.
 
-- **Silent?** Check voice is on (`/crier-on`), no global mute (`~/.claude/voice/.muted`), and an engine is available (`/crier-doctor`).
-- **No summary, just "<name> finished"?** Claude didn't emit the `🔊 VOICE:` line that turn — usually transient; `/crier-on` re-states the instruction.
+- **Silent?** Check voice is on (`/crier:on`), no global mute (`~/.claude/voice/.muted`), and an engine is available (`/crier:doctor`).
+- **No summary, just "<name> finished"?** Claude didn't emit the `🔊 VOICE:` line that turn — usually transient; `/crier:on` re-states the instruction.
 
 ## Privacy
 

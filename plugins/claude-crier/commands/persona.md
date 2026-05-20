@@ -1,5 +1,5 @@
 ---
-description: List voices or pick one for this session (/crier-persona, /crier-persona 3, /crier-persona Ava)
+description: List voices or pick one for this session (/crier:persona, /crier:persona 3, /crier:persona Ava)
 allowed-tools: Bash
 ---
 Run exactly: `crier persona "$ARGUMENTS"`
