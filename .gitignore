@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Crier runtime state (created at use, not part of the package)
+voice/state/
+*.lock
+.muted
+.off-*
