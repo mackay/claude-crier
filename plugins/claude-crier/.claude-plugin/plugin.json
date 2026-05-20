@@ -1,0 +1,11 @@
+{
+  "name": "claude-crier",
+  "description": "Hear a short spoken summary when each Claude Code session finishes or needs you — named per session.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Doug Mackay"
+  },
+  "homepage": "https://github.com/mackay/claude-crier",
+  "repository": "https://github.com/mackay/claude-crier",
+  "license": "MIT"
+}

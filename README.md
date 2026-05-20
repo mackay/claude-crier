@@ -38,14 +38,14 @@ Voice is **off by default** and opt-in **per session** — turn it on only for t
 
 | Command | What it does |
 |---|---|
-| `/voice-on` | Turn voice on for **this** session |
-| `/voice-off` | Turn it off for this session (stops audio *and* the summary line) |
-| `/voice-name <name>` | Set the spoken name for this session, e.g. `/voice-name Flock backend` |
-| `/voice-persona` | List available voices; the current one is marked |
-| `/voice-persona <#\|name>` | Pick a voice, e.g. `/voice-persona 3` or `/voice-persona Ava` (speaks a sample) |
-| `/voice-doctor` | Diagnose your setup (engine, voices, session, on/off state) |
+| `/crier-on` | Turn voice on for **this** session |
+| `/crier-off` | Turn it off for this session (stops audio *and* the summary line) |
+| `/crier-name <name>` | Set the spoken name for this session, e.g. `/crier-name Flock backend` |
+| `/crier-persona` | List available voices; the current one is marked |
+| `/crier-persona <#\|name>` | Pick a voice, e.g. `/crier-persona 3` or `/crier-persona Ava` (speaks a sample) |
+| `/crier-doctor` | Diagnose your setup (engine, voices, session, on/off state) |
 
-> Installed as a plugin, these may appear namespaced (e.g. `/claude-crier:voice-on`) depending on your Claude Code version.
+> Installed as a plugin, these may appear namespaced (e.g. `/claude-crier:crier-on`) depending on your Claude Code version.
 
 If you don't set a name, it defaults to the session's folder name. If you don't pick a voice, Crier assigns a **random Enhanced/Premium voice per session** — stable within a session, different across parallel ones, so they're easy to tell apart by ear.
 
@@ -54,8 +54,8 @@ If you don't set a name, it defaults to the session's folder name. If you don't 
 Create the file `~/.claude/voice/.muted` to instantly silence every session (e.g. you step into a meeting); delete it to resume. Handy aliases:
 
 ```bash
-alias voice-mute='touch ~/.claude/voice/.muted'
-alias voice-unmute='rm -f ~/.claude/voice/.muted'
+alias crier-mute='touch ~/.claude/voice/.muted'
+alias crier-unmute='rm -f ~/.claude/voice/.muted'
 ```
 
 ## How it works
@@ -79,7 +79,7 @@ On macOS, download better voices in **System Settings → Accessibility → Spok
 | Fiona (Enhanced) | Scottish |
 | Moira (Enhanced) | Irish |
 
-Then `/voice-persona` to browse and pick. Note: Siri voices are **not** available to `say` — only the Enhanced/Premium variants are.
+Then `/crier-persona` to browse and pick. Note: Siri voices are **not** available to `say` — only the Enhanced/Premium variants are.
 
 Tip for parallel sessions: give each a different accent so you can identify them instantly.
 
@@ -97,7 +97,7 @@ Tip for parallel sessions: give each a different accent so you can identify them
 export CLAUDE_VOICE_CMD='piper --model en_US-amy-medium.onnx --output-raw | aplay -r 22050 -f S16_LE -t raw -'
 ```
 
-Run `/voice-doctor` on any platform for tailored setup guidance.
+Run `/crier-doctor` on any platform for tailored setup guidance.
 
 ## Configuration
 
@@ -113,10 +113,10 @@ All optional; per-session slash commands override these launch-time defaults.
 
 ## Troubleshooting
 
-Run **`/voice-doctor`** — it reports your platform, whether a TTS engine is found, installed voices, the detected session, and whether voice is on or off, then speaks a test line.
+Run **`/crier-doctor`** — it reports your platform, whether a TTS engine is found, installed voices, the detected session, and whether voice is on or off, then speaks a test line.
 
-- **Silent?** Check voice is on (`/voice-on`), no global mute (`~/.claude/voice/.muted`), and an engine is available (`/voice-doctor`).
-- **No summary, just "<name> finished"?** Claude didn't emit the `🔊 VOICE:` line that turn — usually transient; `/voice-on` re-states the instruction.
+- **Silent?** Check voice is on (`/crier-on`), no global mute (`~/.claude/voice/.muted`), and an engine is available (`/crier-doctor`).
+- **No summary, just "<name> finished"?** Claude didn't emit the `🔊 VOICE:` line that turn — usually transient; `/crier-on` re-states the instruction.
 
 ## Privacy
 

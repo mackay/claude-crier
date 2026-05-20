@@ -1,0 +1,13 @@
+{
+  "name": "claude-crier",
+  "owner": {
+    "name": "Doug Mackay"
+  },
+  "plugins": [
+    {
+      "name": "claude-crier",
+      "source": "./plugins/claude-crier",
+      "description": "Spoken per-session summaries and alerts for monitoring parallel Claude Code sessions by ear."
+    }
+  ]
+}

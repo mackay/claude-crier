@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Crier launcher — resolves the bundled Python engine regardless of how it is
+# invoked: by full path from hooks (${CLAUDE_PLUGIN_ROOT}/bin/crier) or by bare
+# name from slash commands (the plugin bin/ is added to the Bash tool's PATH).
+set -e
+SOURCE="${BASH_SOURCE[0]:-$0}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  case "$SOURCE" in /*) ;; *) SOURCE="$DIR/$SOURCE" ;; esac
+done
+DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+exec /usr/bin/env python3 "$DIR/../scripts/voice_hook.py" "$@"

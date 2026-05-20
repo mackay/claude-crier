@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "matcher": "startup", "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/crier\" sessionstart" } ] },
+      { "matcher": "resume",  "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/crier\" sessionstart" } ] },
+      { "matcher": "clear",   "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/crier\" sessionstart" } ] },
+      { "matcher": "compact", "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/crier\" sessionstart" } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/crier\" stop" } ] }
+    ],
+    "Notification": [
+      { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/crier\" notification" } ] }
+    ]
+  }
+}
