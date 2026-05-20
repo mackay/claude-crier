@@ -71,7 +71,7 @@ Currently this works on **iTerm2 only** (it matches the focused pane via `ITERM_
 
 Crier registers three [Claude Code hooks](https://code.claude.com/docs/en/hooks):
 
-- **`SessionStart`** — when voice is on, injects an instruction asking Claude to end each turn with a hidden one-line summary marker (`🔊 VOICE: …`).
+- **`SessionStart`** — when voice is on, injects an instruction asking Claude to end each turn with a hidden one-line summary marker (`📣 CRIER: …`).
 - **`Stop`** — extracts that summary line from the transcript and speaks it, prefixed with the session's name.
 - **`Notification`** — speaks an alert when the session needs your input or permission. Repeated idle notifications are de-duplicated (at most once a minute), and a notification is dropped rather than queued if something else is mid-sentence — so it never plays *after* you've already answered the prompt.
 - **Error flagging** — if Claude marks a turn as failed or blocked (it's asked to begin the summary with "Problem:"), Crier speaks it as a *"heads up"* alert so problems stand out by ear. This is self-reported, so it's reliable but not guaranteed.
@@ -126,7 +126,7 @@ All optional; per-session slash commands override these launch-time defaults.
 Run **`/crier:doctor`** — it reports your platform, whether a TTS engine is found, installed voices, the detected session, and whether voice is on or off, then speaks a test line.
 
 - **Silent?** Check voice is on (`/crier:on`), no global mute (`~/.claude/voice/.muted`), and an engine is available (`/crier:doctor`).
-- **No summary, just "<name> finished"?** Claude didn't emit the `🔊 VOICE:` line that turn — usually transient; `/crier:on` re-states the instruction.
+- **No summary, just "<name> finished"?** Claude didn't emit the `📣 CRIER:` line that turn — usually transient; `/crier:on` re-states the instruction.
 
 ## Privacy
 

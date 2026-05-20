@@ -38,7 +38,10 @@ LOCK = os.path.join(VOICE_DIR, ".speak.lock")
 MUTE = os.path.join(VOICE_DIR, ".muted")  # global kill-switch for ALL sessions
 LAST_SPOKEN = os.path.join(VOICE_DIR, ".last_spoken")  # de-dup guard
 DEDUP_WINDOW = 10  # seconds — drop an identical line spoken again within this window
-MARKER = "\U0001f50a VOICE:"
+MARKER = "\U0001f4e3 CRIER:"  # the trailing line Claude emits each turn
+# Parse tolerantly: match "CRIER:" regardless of any leading emoji or case, so the
+# line is still picked up if Claude drops or changes the emoji.
+_MARKER_RE = re.compile(r"CRIER:\s*(.*)", re.I)
 # A summary that begins with one of these (Claude is asked to flag failures/blocks
 # this way) is spoken as an alert ("heads up") instead of a normal completion.
 _ALERT_RE = re.compile(r"^\s*(?:⚠️?\s*)?(problem|error|blocked|failed|stuck)\b[:,\-\s]*", re.I)
@@ -368,7 +371,7 @@ def payload():
 def _summary_instruction():
     return (
         "Voice notifications are ON for this session. At the very end of every "
-        "response, output one final line starting with '\U0001f50a VOICE:' "
+        "response, output one final line starting with '\U0001f4e3 CRIER:' "
         "followed by a single concise spoken-style sentence (under ~25 words) "
         "stating what you just completed and the immediate next step or what you "
         "need from the user. If the work failed, errored, or you are blocked, begin "
@@ -419,9 +422,9 @@ def stop():
     phrase = None
     if txt:
         for ln in reversed(txt.splitlines()):
-            i = ln.find(MARKER)
-            if i != -1:
-                phrase = ln[i + len(MARKER):].strip()
+            m = _MARKER_RE.search(ln)
+            if m:
+                phrase = m.group(1).strip()
                 break
     if not phrase:
         spoken = f"{lab} finished."

@@ -4,6 +4,6 @@ allowed-tools: Bash
 ---
 Run exactly: `crier off`
 
-Relay its output. Then STOP appending the "🔊 VOICE:" line to your responses for the rest of this session.
+Relay its output. Then STOP appending the "📣 CRIER:" line to your responses for the rest of this session.
 
 Confirm in one short line.
