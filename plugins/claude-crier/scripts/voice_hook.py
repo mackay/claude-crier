@@ -12,13 +12,13 @@ ear.
 
 Per-session control is via slash commands (named /voice-* or /crier:* depending
 on how it is installed), which call this script with modes:
-  on | off | name <name> | persona [#|name] | rate <wpm> | focus on|off | doctor
+  on | off | name <name> | persona [#|name] | rate <wpm> | focus on [secs]|off | style <name> [pct] | doctor
 
 State is per session id under ~/.claude/voice/state/<id>.json and OVERRIDES the
 launch-time env defaults (so `claude-voice` still works, but you can also flip a
 plain session on/off from inside it).
 
-Modes: sessionstart | stop | notification | _speak | on | off | name | persona | rate | focus | doctor
+Modes: sessionstart | stop | notification | _speak | on | off | name | persona | rate | focus | style | prompt-submit | doctor
 """
 import sys
 import os
@@ -30,6 +30,7 @@ import shutil
 import time
 import hashlib
 import subprocess
+import random
 
 HOME = os.path.expanduser("~")
 VOICE_DIR = os.path.join(HOME, ".claude", "voice")
@@ -45,6 +46,15 @@ _MARKER_RE = re.compile(r"CRIER:\s*(.*)", re.I)
 # A summary that begins with one of these (Claude is asked to flag failures/blocks
 # this way) is spoken as an alert ("heads up") instead of a normal completion.
 _ALERT_RE = re.compile(r"^\s*(?:⚠️?\s*)?(problem|error|blocked|failed|stuck)\b[:,\-\s]*", re.I)
+# Persona styles for /crier:style — applied to style_pct% of normal summaries
+# (default 33) so a catchphrase stays a treat. {lab}=session name, {phrase}=summary.
+_STYLE_TEMPLATES = {
+    "town": "Hear ye, hear ye! {lab} proclaims: {phrase}",
+    "newsboy": "Extra, extra! {lab}: {phrase}",
+    "sportscaster": "And {lab} comes through — {phrase}",
+    "butler": "Pardon the interruption — {lab}: {phrase}",
+}
+_STYLE_DEFAULT_PCT = 33
 SELF = os.path.abspath(__file__)
 
 # Launch-time defaults; per-session state (set via slash commands) overrides these.
@@ -237,6 +247,17 @@ def resolve_rate(sid):
     return read_state(sid).get("rate") or (ENV_RATE or None)
 
 
+def style_summary(sid, lab, phrase):
+    """Spoken text for a normal completion, optionally flavored by the session's
+    persona style (only style_pct% of the time)."""
+    st = read_state(sid)
+    tmpl = _STYLE_TEMPLATES.get(st.get("style", "plain"))
+    pct = int(st.get("style_pct", _STYLE_DEFAULT_PCT))
+    if tmpl and random.randint(1, 100) <= pct:
+        return tmpl.format(lab=lab, phrase=phrase)
+    return f"{lab}. {phrase}"
+
+
 def match_persona(arg, pool):
     arg = (arg or "").strip()
     if not pool or not arg:
@@ -291,13 +312,15 @@ def _locked_speak(text, voice, rate, nowait=False):
         fh.close()
 
 
-def speak_async(text, voice=None, rate=None, nowait=False):
+def speak_async(text, voice=None, rate=None, nowait=False, grace=0, sid=None):
     """Fire-and-forget: detach a child that speaks under the lock, so the hook
     returns instantly. nowait=True (notifications) drops the line if the speech
-    channel is busy instead of queueing behind it."""
+    channel is busy. grace>0 (focus mode) makes the child wait that many seconds
+    first and cancel if you return to the session."""
     if not text:
         return
-    arg = json.dumps({"text": text, "voice": voice, "rate": rate, "nowait": nowait})
+    arg = json.dumps({"text": text, "voice": voice, "rate": rate, "nowait": nowait,
+                      "grace": grace, "sid": sid, "since": time.time()})
     subprocess.Popen([sys.executable, SELF, "_speak", arg],
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                      stderr=subprocess.DEVNULL, start_new_session=True)
@@ -359,6 +382,20 @@ def is_user_looking():
     return bool(env_id and focused and focused in env_id)
 
 
+def _await_presence(grace, sid, since):
+    """Block up to `grace` seconds watching for the user to return: returns True
+    (cancel speech) if they focus this session's pane or submit a new prompt;
+    otherwise False once the window elapses."""
+    deadline = time.time() + float(grace or 0)
+    while time.time() < deadline:
+        if is_user_looking():
+            return True
+        if sid and float(read_state(sid).get("_last_submit_ts") or 0) > float(since or 0):
+            return True
+        time.sleep(0.4)
+    return False
+
+
 # ----------------------------------- hooks -----------------------------------
 
 def payload():
@@ -415,8 +452,7 @@ def stop():
     sid = p.get("session_id") or current_session_id(p.get("cwd"))
     if not is_enabled(sid) or os.path.exists(MUTE):
         return
-    if read_state(sid).get("focus") and is_user_looking():
-        return  # you're looking at this session — no need to announce it
+    st = read_state(sid)
     lab = resolve_label(sid, p)
     txt = last_assistant_text(p.get("transcript_path", ""))
     phrase = None
@@ -432,8 +468,10 @@ def stop():
         clean = _ALERT_RE.sub("", phrase, count=1).strip()
         spoken = f"{lab}, heads up. {clean}"
     else:
-        spoken = f"{lab}. {phrase}"
-    speak_async(spoken, resolve_voice(sid), resolve_rate(sid))
+        spoken = style_summary(sid, lab, phrase)
+    # Focus mode: wait a beat and cancel if you return to the session.
+    grace = int(st.get("focus_secs", 10)) if st.get("focus") else 0
+    speak_async(spoken, resolve_voice(sid), resolve_rate(sid), grace=grace, sid=sid)
 
 
 def notification():
@@ -526,29 +564,66 @@ def cmd_rate(args):
 
 def cmd_focus(args):
     sid = current_session_id()
-    arg = " ".join(args).strip().lower()
-    cur = bool(read_state(sid).get("focus"))
-    if arg in ("on", "true", "1", "yes"):
-        new = True
-    elif arg in ("off", "false", "0", "no"):
-        new = False
-    elif arg in ("", "toggle"):
-        new = not cur
-    else:
-        print("Usage: focus on | off")
-        return
-    write_state(sid, focus=new)
-    if not new:
+    parts = " ".join(args).split()
+    a0 = parts[0].lower() if parts else ""
+    if a0 in ("off", "false", "no", "0"):
+        write_state(sid, focus=False)
         print("Focus mode OFF — this session always speaks.")
         return
-    ok, detail = focus_supported()
-    if ok:
-        print("Focus mode ON — this session stays quiet while you're looking at its "
-              "terminal (%s) and speaks when you're elsewhere. (macOS may ask once "
-              "for Automation permission.)" % detail)
-    else:
-        print("Focus mode ON, but focus detection isn't available here (%s), so it "
-              "will keep speaking normally." % detail)
+    if a0 and a0 not in ("on", "true", "yes", "toggle") and not a0.isdigit():
+        print("Usage: focus on [seconds] | focus off")
+        return
+    secs = None
+    if a0.isdigit():
+        secs = int(a0)
+    elif len(parts) > 1 and parts[1].isdigit():
+        secs = int(parts[1])
+    secs = max(2, min(120, secs or int(read_state(sid).get("focus_secs", 10))))
+    write_state(sid, focus=True, focus_secs=secs)
+    iterm, _ = focus_supported()
+    extra = " or refocus its iTerm pane" if iterm else ""
+    print("Focus mode ON — before a summary, waits up to %ds and stays quiet if you "
+          "return (send a message%s). 'Needs you' alerts are never delayed." % (secs, extra))
+
+
+def cmd_style(args):
+    sid = current_session_id()
+    parts = " ".join(args).split()
+    if not parts:
+        cur = read_state(sid).get("style", "plain")
+        pct = int(read_state(sid).get("style_pct", _STYLE_DEFAULT_PCT))
+        print("Crier styles (plain is the default; reset with: style plain):")
+        for s in ["plain"] + sorted(_STYLE_TEMPLATES):
+            print("  - %s%s" % (s, "  <- current" if s == cur else ""))
+        print("Current: %s%s" % (cur, "" if cur == "plain" else " (%d%% of turns)" % pct))
+        print("Set with: style <name> [percent]   e.g. style town 33")
+        return
+    name = parts[0].lower()
+    if name in ("plain", "default", "reset", "off", "none"):
+        write_state(sid, style="plain")
+        print("Style reset to plain.")
+        return
+    if name not in _STYLE_TEMPLATES:
+        print("Unknown style '%s'. Options: plain, %s"
+              % (name, ", ".join(sorted(_STYLE_TEMPLATES))))
+        return
+    pct = _STYLE_DEFAULT_PCT
+    if len(parts) > 1 and parts[1].isdigit():
+        pct = max(1, min(100, int(parts[1])))
+    write_state(sid, style=name, style_pct=pct)
+    print("Style set to %s (%d%% of turns)." % (name, pct))
+    tts_speak(_STYLE_TEMPLATES[name].format(lab=resolve_label(sid),
+              phrase="this is how I'll announce things"),
+              resolve_voice(sid), resolve_rate(sid))
+
+
+def cmd_prompt_submit():
+    # UserPromptSubmit hook: record when you last sent a prompt so focus mode can
+    # cancel a pending summary if you've returned. Only writes for focus sessions.
+    p = payload()
+    sid = p.get("session_id") or current_session_id(p.get("cwd"))
+    if sid and read_state(sid).get("focus"):
+        write_state(sid, _last_submit_ts=time.time())
 
 
 def cmd_doctor():
@@ -580,11 +655,14 @@ def cmd_doctor():
     out.append("  focus detection: %s (%s)"
                % ("available" if fok else "unavailable", fdetail))
     st = read_state(sid)
-    out.append("  this session: %s | name='%s' | voice=%s | rate=%s | focus=%s"
+    focus_desc = ("on (%ss)" % st.get("focus_secs", 10)) if st.get("focus") else "off"
+    style_desc = st.get("style", "plain")
+    if style_desc != "plain":
+        style_desc += " (%d%%)" % int(st.get("style_pct", _STYLE_DEFAULT_PCT))
+    out.append("  this session: %s | name='%s' | voice=%s | rate=%s | focus=%s | style=%s"
                % ("ON" if is_enabled(sid) else "OFF",
                   resolve_label(sid), resolve_voice(sid) or "platform default",
-                  resolve_rate(sid) or "default",
-                  "on" if st.get("focus") else "off"))
+                  resolve_rate(sid) or "default", focus_desc, style_desc))
     if os.path.exists(MUTE):
         out.append("  NOTE: global mute is active (run `voice-unmute`).")
     print("\n".join(out))
@@ -609,6 +687,8 @@ def main():
             d = json.loads(rest[0]) if rest else {}
         except Exception:
             d = {}
+        if d.get("grace") and _await_presence(d["grace"], d.get("sid"), d.get("since")):
+            return  # you came back to the session — skip the now-stale summary
         _locked_speak(d.get("text", ""), d.get("voice"), d.get("rate"),
                       nowait=bool(d.get("nowait")))
     elif mode == "on":
@@ -623,6 +703,10 @@ def main():
         cmd_rate(rest)
     elif mode == "focus":
         cmd_focus(rest)
+    elif mode == "style":
+        cmd_style(rest)
+    elif mode == "prompt-submit":
+        cmd_prompt_submit()
     elif mode == "doctor":
         cmd_doctor()
 

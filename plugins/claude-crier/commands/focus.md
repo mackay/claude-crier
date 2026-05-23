@@ -1,5 +1,5 @@
 ---
-description: Stay quiet while you're looking at this session's terminal (/crier:focus on|off)
+description: Stay quiet if you return to this session within N seconds (/crier:focus on [seconds]|off)
 allowed-tools: Bash
 ---
 Run exactly: `crier focus "$ARGUMENTS"`

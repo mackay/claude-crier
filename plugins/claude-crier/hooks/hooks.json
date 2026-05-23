@@ -11,6 +11,9 @@
     ],
     "Notification": [
       { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/crier\" notification" } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/crier\" prompt-submit" } ] }
     ]
   }
 }

@@ -45,8 +45,9 @@ Voice is **off by default** and opt-in **per session** — turn it on only for t
 | `/crier:persona` | List available voices; the current one is marked |
 | `/crier:persona <#\|name>` | Pick a voice, e.g. `/crier:persona 3` or `/crier:persona Ava` (speaks a sample) |
 | `/crier:rate <wpm>` | Set this session's speech rate, e.g. `/crier:rate 180` (`default` resets) |
-| `/crier:focus on\|off` | Stay quiet while you're looking at this session's terminal — see [Focus mode](#focus-mode) |
-| `/crier:doctor` | Diagnose your setup (engine, voices, session, on/off, rate, focus) |
+| `/crier:focus on [secs]\|off` | Hold a summary `secs` (default 10) and cancel it if you return — see [Focus mode](#focus-mode) |
+| `/crier:style <name> [pct]` | Persona phrasing (town, newsboy, sportscaster, butler) on `pct`% of turns (default 33); `plain` resets — see [Styles](#styles) |
+| `/crier:doctor` | Diagnose your setup (engine, voices, session, on/off, rate, focus, style) |
 
 > These live under the plugin's `crier:` namespace — type `/crier` in the prompt to see them all and pick one.
 
@@ -63,20 +64,34 @@ alias crier-unmute='rm -f ~/.claude/voice/.muted'
 
 ### Focus mode
 
-`/crier:focus on` keeps a session **quiet while you're actively looking at its terminal** — voice is for the sessions you *aren't* watching — and it speaks again once you switch away. It fails open: if it can't tell, it speaks.
+`/crier:focus on [seconds]` (default 10) makes a session **hold a finished summary for a few seconds and cancel it if you're clearly still here** — voice is for the sessions you *aren't* watching. During the window it cancels the summary if you **send a new message** (works in *any* terminal) or, on **iTerm2**, if that session's pane is focused. If neither happens, it speaks once the window elapses. It fails open: when it can't tell, it speaks.
 
-Currently this works on **iTerm2 only** (it matches the focused pane via `ITERM_SESSION_ID`); on other terminals it reports unavailable and just keeps speaking. The first use may trigger a one-time macOS **Automation** permission prompt (to read iTerm2's focused session). Run `/crier:doctor` to confirm focus detection shows `available` in your terminal.
+Notes: it adds up to `seconds` of delay to summaries *when you're away* (fine — you're away), and "present but silently reading" is only caught on iTerm2 — we can't see keystrokes, only submitted messages. Time-sensitive **"needs you" alerts are never delayed**. The first iTerm2 check may trigger a one-time macOS **Automation** permission prompt; `/crier:doctor` shows whether iTerm presence is `available`.
+
+### Styles
+
+Give a session a persona with `/crier:style <name> [percent]`. The flourish plays on `percent`% of summaries (default **33%**) so it stays a treat, not a tax — the rest are plain. `/crier:style` lists them; `/crier:style plain` resets.
+
+| Style | Sounds like |
+|---|---|
+| `town` | "Hear ye, hear ye! api-server proclaims: …" |
+| `newsboy` | "Extra, extra! api-server: …" |
+| `sportscaster` | "And api-server comes through — …" |
+| `butler` | "Pardon the interruption — api-server: …" |
+
+(Alerts and the bare "finished" fallback always stay plain, so problems read clearly.)
 
 ## How it works
 
-Crier registers three [Claude Code hooks](https://code.claude.com/docs/en/hooks):
+Crier registers a few [Claude Code hooks](https://code.claude.com/docs/en/hooks):
 
 - **`SessionStart`** — when voice is on, injects an instruction asking Claude to end each turn with a hidden one-line summary marker (`📣 CRIER: …`).
 - **`Stop`** — extracts that summary line from the transcript and speaks it, prefixed with the session's name.
 - **`Notification`** — speaks an alert when the session needs your input or permission. Repeated idle notifications are de-duplicated (at most once a minute), and a notification is dropped rather than queued if something else is mid-sentence — so it never plays *after* you've already answered the prompt.
+- **`UserPromptSubmit`** — used only by [Focus mode](#focus-mode), to notice when you've returned to a session.
 - **Error flagging** — if Claude marks a turn as failed or blocked (it's asked to begin the summary with "Problem:"), Crier speaks it as a *"heads up"* alert so problems stand out by ear. This is self-reported, so it's reliable but not guaranteed.
 
-Speech is serialized with a lock so two sessions finishing at once don't talk over each other. Per-session state (on/off, name, voice, rate, focus) lives in `~/.claude/voice/state/<session-id>.json`.
+Speech is serialized with a lock so two sessions finishing at once don't talk over each other. Per-session state (on/off, name, voice, rate, focus, style) lives in `~/.claude/voice/state/<session-id>.json`.
 
 ## Voices
 
